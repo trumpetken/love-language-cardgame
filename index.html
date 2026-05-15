@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>愛之語：記憶的拼圖 (正式美術演示)</title>
+    <style>
+        :root { --primary: #ff85a1; --mind: #a29bfe; --gold: #ffd700; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: "Microsoft JhengHei", sans-serif; background: #000; }
+
+        .screen { position: absolute; width: 100%; height: 100%; display: none; background-size: cover; background-position: center; box-sizing: border-box; }
+        
+        /* 共同按鈕 - VN 選項 */
+        .opt-btn { background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; text-align: left; margin: 5px 0; -webkit-backdrop-filter: blur(5px); }
+        .opt-btn:hover { background: var(--primary); }
+        
+        /* 0. 性別選擇 - 加入星空背景 */
+        #setup-screen { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            background-color: #0f0c29;
+            /* 正式步驟：換成真實星空圖 */
+            background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px), radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px);
+            background-size: 550px 550px, 350px 350px;
+            z-index: 10; 
+        }
+        
+        /* 1. 星空卡牌大廳 */
+        #card-screen { 
+            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); 
+            display: none; flex-direction: column; align-items: center; justify-content: center; 
+            z-index: 10; 
+        }
+        #card-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 800px; padding: 20px; }
+        
+        .card { 
+            width: 120px; height: 180px; border: 3px solid #ffd700; border-radius: 10px;
+            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+            transition: transform 0.2s ease-in-out; text-align: center;
+            display: flex; align-items: center; justify-content: center;
+            
+            /* 【正式美術套用】塔羅牌背面 */
+            /* 正式步驟：background-image: url('tarot_back.png'); */
+            background-color: #1a1a2e;
+            color: #ffd700; font-size: 50px; font-family: serif;
+        }
+        
+        /* 2. 拼圖修復畫面 */
+        #puzzle-screen { display: none; background: rgba(0,0,0,0.95); z-index: 50; touch-action: none; }
+        #puzzle-layout { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; gap: 30px; padding: 20px; box-sizing: border-box; }
+        
+        /* 拼圖底盤 */
+        #puzzle-board { 
+            width: 300px; height: 450px; border-radius: 15px; position: relative; border: 4px solid #fff; box-shadow: 0 0 30px rgba(255,255,255,0.1); 
+            background-size: cover; 
+            filter: grayscale(80%) blur(1px); /* 讓底圖變暗/模糊 */
+        }
+        /* 缺口框格 - 配合凹凸形狀 */
+        .puzzle-hole { 
+            position: absolute; width: 70px; height: 70px; background: rgba(0,0,0,0.6); 
+            border-radius: 10px; 
+            /* 正式步驟：這裡也可以加上一個半透明的凹凸形狀 PNG */
+        }
+
+        #puzzle-inventory { width: 100px; height: 450px; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; border: 2px solid rgba(255,255,255,0.2); }
+        
+        /* ========================================= */
+        /* 【核心修改】實現真正的「不規則拼圖感」 */
+        /* ========================================= */
+        .puzzle-piece { 
+            width: 70px; height: 70px; /* 這個大小必須包含不規則的凸出部分 */
+            cursor: pointer; position: absolute; z-index: 100; border: none; 
+            user-select: none; -webkit-user-select: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+
+            /* 1. 載入完整的圖作為背景 */
+            background-repeat: no-repeat;
+            background-size: 300px 450px; /* 這裡必須與 puzzle-board 的大小一致 */
+
+            /* 2. 【正式美術套用】套用不規則遮罩 (Jigsaw Shape Mask) */
+            /* 必須加上 -webkit- 前綴讓平板 Safari 支援 */
+            -webkit-mask-size: 100% 100%;
+            -webkit-mask-repeat: no-repeat;
+            mask-size: 100% 100%;
+            mask-repeat: no-repeat;
+        }
+
+        /* Demo: 使用 SVG 代碼模擬不規則遮罩和插畫位置 */
+        /* 碎片 1: 左上凸頭 */
+        #piece-0 {
+            /* 正式步驟：-webkit-mask-image: url('mask0.png'); */
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"><path d="M10,10 H60 V60 H10 V35 a8,8 0 0,1 0,-10 Z" fill="black"/></svg>');
+        }
+        /* 碎片 2: 右邊凹頭 */
+        #piece-1 {
+            /* 正式步驟：-webkit-mask-image: url('mask1.png'); */
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"><path d="M10,10 H60 V25 a8,8 0 0,0 0,10 V60 H10 V10 Z" fill="black"/></svg>');
+        }
+        /* 碎片 3: 下方凸頭 */
+        #piece-2 {
+            /* 正式步驟：-webkit-mask-image: url('mask2.png'); */
+            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"><path d="M10,10 H60 V60 H35 a8,8 0 0,1 -10,0 H10 V10 Z" fill="black"/></svg>');
+        }
+
+        .puzzle-piece.locked { 
+            box-shadow: none; border-color: transparent; cursor: default; 
+            filter: drop-shadow(0 0 5px rgba(255,215,0,0.8)); /* 拼對時的發光 */
+        }
+
+        /* 恢復發光特效 */
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 9999; display: none; opacity: 0; transition: opacity 0.5s; }
+
+        /* 3. VN 回憶畫面 */
+        #vn-container { 
+            display: none; z-index: 100; cursor: pointer; 
+            background-size: cover; background-position: center;
+        }
+        /* VN 立繪層 */
+        #sprite-container { 
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); 
+            width: 80%; height: 80%; display: flex; justify-content: center; align-items: flex-end; 
+            pointer-events: none; 
+        }
+        .char-sprite { height: 95%; transition: opacity 0.5s; opacity: 0; }
+
+        #vn-dialog { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 900px; min-height: 160px; background: rgba(0, 0, 0, 0.85); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 25px; box-sizing: border-box; color: white; -webkit-backdrop-filter: blur(5px); }
+        #vn-options { display: none; flex-direction: column; gap: 10px; margin-top: 15px; pointer-events: auto;}
+    </style>
+</head>
+<body>
+
+    <div id="flash-overlay"></div>
+
+    <div id="setup-screen" class="screen">
+        <h1 style="color:white; margin-bottom:50px; font-size: 2.5rem; text-shadow: 0 0 15px var(--primary); font-family: serif;">愛之語：回憶日記</h1>
+        <div style="display:flex; gap:20px;">
+            <button class="opt-btn" style="text-align:center; padding: 15px 40px;" onclick="initGame('male')">男主角</button>
+            <button class="opt-btn" style="text-align:center; padding: 15px 40px;" onclick="initGame('female')">女主角</button>
+        </div>
+    </div>
+
+    <div id="card-screen" class="screen">
+        <div id="spirit-msg" style="color:white; font-size:1.3rem; margin-bottom:30px; text-align:center;">「這五張卡牌封印著你們破碎的記憶...<br>點選一張，將它拼湊完整吧。」</div>
+        <div id="card-container">
+            <div class="card" id="card-0" onclick="flipCard(0)">?</div>
+            <div class="card" id="card-1" onclick="flipCard(1)">?</div>
+            <div class="card" id="card-2" onclick="flipCard(2)">?</div>
+            <div class="card" id="card-3" onclick="flipCard(3)">?</div>
+            <div class="card" id="card-4" onclick="flipCard(4)">?</div>
+        </div>
+    </div>
+
+    <div id="puzzle-screen" class="screen">
+        <h3 style="color:white; text-align:center; padding-top:20px; font-size: 1.3rem; margin:0; text-shadow: 0 0 10px #fff;">拖曳碎片，還原記憶...</h3>
+        <div id="puzzle-layout">
+            <div id="puzzle-board">
+                <div class="puzzle-hole" id="hole-0" style="left: 30px; top: 50px;"></div>
+                <div class="puzzle-hole" id="hole-1" style="left: 180px; top: 180px;"></div>
+                <div class="puzzle-hole" id="hole-2" style="left: 80px; top: 320px;"></div>
+            </div>
+            <div id="puzzle-inventory">
+                <div class="puzzle-piece" id="piece-0" data-target="0"></div>
+                <div class="puzzle-piece" id="piece-1" data-target="1"></div>
+                <div class="puzzle-piece" id="piece-2" data-target="2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="vn-container" class="screen" onclick="handleVnClick()">
+        <div id="sprite-container">
+            <img id="sprite-spirit" class="char-sprite" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'><rect width='100' height='200' fill='%23ff85a1' opacity='0.5'/><text x='20' y='100' fill='white'>精靈</text></svg>" alt="精靈">
+            <img id="sprite-partner" class="char-sprite" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'><rect width='100' height='200' fill='%234a90e2' opacity='0.5'/><text x='20' y='100' fill='white'>前任</text></svg>" alt="前任">
+        </div>
+        <div id="vn-dialog">
+            <div id="vn-name"></div>
+            <div id="vn-text"></div>
+            <div id="vn-options"></div>
+        </div>
+    </div>
+
+<script>
+    // --- 遊戲資料 ---
+    var scenes = [
+        { id:0, name: "圖書館的午後", context: "期末考週，對方盯著筆記本發呆，壓力大到快哭出來了。", 
+          /* Demo: 使用 SVG 模擬正式插畫 */fullImg: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450'><rect width='300' height='450' fill='%23e0f7fa'/><text x='80' y='220' fill='%23006064' font-size='24'>圖書館插畫</text></svg>",
+          opts: [ { t: "買杯熱咖啡 (服務)", type: "acts", msg: "其實我不需要咖啡，我只希望你能陪我散心... (精心的時刻)" }, { t: "寫小紙條鼓勵 (肯定)", type: "words", msg: "如果你能拉著我的手去外面走走也好... (精心的時刻)" }, { t: "提議去走走 (時間)", type: "time", msg: "如果這時候你能對我說一句「你已經很棒了」... (肯定的言詞)" } ] },
+        // ... 其他場景資料 (略，同 07 版) ...
+    ];
+
+    // 為了展示美術版，我只複製一個場景作為代表。正式版請補齊其餘 4 個場景。
+    for(var i=1; i<5; i++) { scenes.push(scenes[0]); }
+
+    var scores = { words:0, acts:0, gifts:0, time:0, touch:0 };
+    var completedCards = 0;
+    var currentSceneIndex = 0;
+
+    function initGame(gender) {
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('card-screen').style.display = 'flex';
+    }
+
+    function flipCard(index) {
+        var card = document.getElementById('card-' + index);
+        if (card.getAttribute('data-flipped') === 'true') return;
+        card.setAttribute('data-flipped', 'true');
+        
+        currentSceneIndex = index;
+        var scene = scenes[index];
+
+        card.style.transform = 'scaleX(0)'; // 2D 翻轉動畫
+        
+        setTimeout(function() {
+            /* 【正式美術套用】塔羅牌正面 (揭示場景縮圖) */
+            // 正式步驟：card.style.backgroundImage = 'url(cards/library_front.png)';
+            card.style.backgroundColor = '#fff'; card.style.border = '3px solid #ffd700'; card.style.color = '#333';
+            card.innerHTML = '<div style="font-size:16px; padding:10px; font-weight:bold;">解鎖記憶<br>▼<br>' + scene.name + '</div>';
+            card.style.transform = 'scaleX(1)'; 
+            
+            setTimeout(function() { openPuzzleScreen(); }, 1200);
+        }, 200);
+    }
+
+    // --- 拼圖系統 (原生 Touch/Mouse 相容版) ---
+    var draggedPiece = null;
+    var startX = 0, startY = 0, startLeft = 0, startTop = 0;
+    var piecesLocked = 0;
+
+    // 遮罩在完整插畫中的相對位置 (美術提供)
+    var holesConfig = [ { x: 30, y: 50 }, { x: 180, y: 180 }, { x: 80, y: 320 } ];
+
+    function openPuzzleScreen() {
+        document.getElementById('card-screen').style.display = 'none';
+        document.getElementById('puzzle-screen').style.display = 'block';
+        
+        var board = document.getElementById('puzzle-board');
+        var fullImgUrl = scenes[currentSceneIndex].fullImg; // 取得該回憶的插畫
+
+        /* 【正式美術套用】底圖 */
+        // 正式步驟：board.style.backgroundImage = "url('library_board_bg.png')";
+        board.style.backgroundImage = "url(" + fullImgUrl + ")"; 
+        
+        piecesLocked = 0;
+        
+        // 重置拼圖碎片並套用背景
+        for(var i=0; i<3; i++) {
+            var piece = document.getElementById('piece-' + i);
+            document.getElementById('puzzle-inventory').appendChild(piece);
+            piece.style.position = 'relative';
+            piece.style.left = '0px'; piece.style.top = '0px';
+            piece.className = 'puzzle-piece'; 
+
+            /* 【正式美術套用】拼圖碎片載入完整的圖 */
+            piece.style.backgroundImage = "url(" + fullImgUrl + ")"; 
+            
+            // 關鍵：將背景移動到對應位置 (Background Position)，呈現遮罩切割感
+            var cfg = holesConfig[i];
+            piece.style.backgroundPosition = "-" + cfg.x + "px -" + cfg.y + "px";
+        }
+    }
+
+    // --- 觸控/滑鼠拖曳邏輯 ---
+    window.onload = function() {
+        for(var i=0; i<3; i++) {
+            var piece = document.getElementById('piece-' + i);
+            // 兼容性處理：確保同時綁定鼠標和觸摸
+            piece.addEventListener('touchstart', onDragStart, false);
+            piece.addEventListener('mousedown', onDragStart, false);
+        }
+        document.addEventListener('touchmove', onDragMove, {passive: false}); // 關鍵：{passive:false} 才能 preventDefault
+        document.addEventListener('mousemove', onDragMove, false);
+        document.addEventListener('touchend', onDragEnd, false);
+        document.addEventListener('mouseup', onDragEnd, false);
+    };
+
+    function onDragStart(e) {
+        if(e.target.className.indexOf('locked') !== -1) return;
+        draggedPiece = e.target;
+        
+        // 將被拖拽物體暫時置入 body，確保層級最高
+        var rect = draggedPiece.getBoundingClientRect();
+        draggedPiece.style.position = 'fixed';
+        draggedPiece.style.left = rect.left + 'px';
+        draggedPiece.style.top = rect.top + 'px';
+        document.body.appendChild(draggedPiece);
+
+        startX = e.type.indexOf('touch') !== -1 ? e.touches[0].clientX : e.clientX;
+        startY = e.type.indexOf('touch') !== -1 ? e.touches[0].clientY : e.clientY;
+        startLeft = parseFloat(draggedPiece.style.left) || 0;
+        startTop = parseFloat(draggedPiece.style.top) || 0;
+    }
+
+    function onDragMove(e) {
+        if(!draggedPiece) return;
+        
+        // 防止平板跟著捲動 (必須設定 {passive: false} )
+        if(e.cancelable && e.type.indexOf('touch') !== -1) e.preventDefault(); 
+        
+        var currentX = e.type.indexOf('touch') !== -1 ? e.touches[0].clientX : e.clientX;
+        var currentY = e.type.indexOf('touch') !== -1 ? e.touches[0].clientY : e.clientY;
+        
+        draggedPiece.style.left = (startLeft + currentX - startX) + 'px';
+        draggedPiece.style.top = (startTop + currentY - startY) + 'px';
+    }
+
+    function onDragEnd(e) {
+        if(!draggedPiece) return;
+        
+        var targetId = draggedPiece.getAttribute('data-target');
+        var hole = document.getElementById('hole-' + targetId);
+        var holeRect = hole.getBoundingClientRect();
+        var pieceRect = draggedPiece.getBoundingClientRect();
+        
+        // 計算距離
+        var dx = holeRect.left - pieceRect.left;
+        var dy = holeRect.top - pieceRect.top;
+        var dist = Math.sqrt(dx*dx + dy*dy);
+        
+        // 放寬吸附判定到 70px (拼圖不規則形狀需要更多容錯)
+        if (dist < 70) {
+            draggedPiece.style.left = holeRect.left + 'px';
+            draggedPiece.style.top = holeRect.top + 'px';
+            // 將 fixed 轉回 absolute，鎖定在 board 上
+            var boardRect = document.getElementById('puzzle-board').getBoundingClientRect();
+            var cfg = holesConfig[targetId];
+            draggedPiece.style.position = 'absolute';
+            draggedPiece.style.left = cfg.x + 'px';
+            draggedPiece.style.top = cfg.y + 'px';
+            document.getElementById('puzzle-board').appendChild(draggedPiece);
+
+            draggedPiece.className = 'puzzle-piece locked';
+            piecesLocked++;
+            if(piecesLocked === 3) setTimeout(completePuzzle, 500);
+        } else {
+            // 放錯位置，退回右邊庫存區
+            document.getElementById('puzzle-inventory').appendChild(draggedPiece);
+            draggedPiece.style.position = 'relative';
+            draggedPiece.style.left = '0px';
+            draggedPiece.style.top = '0px';
+        }
+        draggedPiece = null;
+    }
+
+    function completePuzzle() {
+        var flash = document.getElementById('flash-overlay');
+        flash.style.display = 'block';
+        setTimeout(function() { flash.style.opacity = '1'; }, 10);
+        
+        setTimeout(function() {
+            document.getElementById('puzzle-screen').style.display = 'none';
+            // 收回碎片方便下次使用 (CSS 會重置位置)
+            for(var i=0; i<3; i++) {
+                var piece = document.getElementById('piece-'+i);
+                document.getElementById('puzzle-inventory').appendChild(piece);
+            }
+            flash.style.opacity = '0';
+            setTimeout(function() { flash.style.display = 'none'; }, 500);
+            
+            startVnSequence();
+        }, 600);
+    }
+
+    // --- 視覺小說 (VN) ---
+    var currentVnLines = [];
+    var vnIndex = 0;
+    var isTyping = false;
+    var typeTimer = null;
+
+    function startVnSequence() {
+        document.getElementById('vn-container').style.display = 'block';
+        
+        /* 【正式美術套用】VN 背景 */
+        // 正式步驟：document.getElementById('vn-container').style.backgroundImage = 'url(bg/library.png)';
+        
+        var scene = scenes[currentSceneIndex];
+        currentVnLines = [{ name: "回憶：" + scene.name, text: scene.context, options: scene.opts, showSpirit: true }]; // 精靈開場
+        vnIndex = 0;
+        playVnLine();
+    }
+
+    function playVnLine() {
+        var line = currentVnLines[vnIndex];
+        var textEl = document.getElementById('vn-text');
+        var optCont = document.getElementById('vn-options');
+
+        optCont.style.display = "none";
+        document.getElementById('vn-name').innerHTML = line.name;
+        textEl.innerHTML = "";
+        
+        /* 【正式美術套用】立繪切換 */
+        var spriteSpirit = document.getElementById('sprite-spirit');
+        var spritePartner = document.getElementById('sprite-partner');
+        if(line.showSpirit) {
+            spriteSpirit.style.opacity = '1'; spritePartner.style.opacity = '0';
+        } else {
+            // 讀心術時也顯示前任
+            spriteSpirit.style.opacity = '0'; spritePartner.style.opacity = '1';
+        }
+
+        isTyping = true;
+        var charIndex = 0;
+        clearInterval(typeTimer);
+        typeTimer = setInterval(function() {
+            textEl.innerHTML += line.text.charAt(charIndex); charIndex++;
+            if (charIndex >= line.text.length) {
+                clearInterval(typeTimer); isTyping = false;
+                if (line.options) showVnOptions(line.options);
+            }
+        }, 40);
+    }
+
+    function handleVnClick() {
+        if (isTyping || currentVnLines[vnIndex].options) return;
+
+        vnIndex++;
+        if (vnIndex < currentVnLines.length) {
+            playVnLine();
+        } else {
+            // VN 結束
+            document.getElementById('vn-container').style.display = 'none';
+            document.getElementById('card-screen').style.display = 'flex';
+            
+            var card = document.getElementById('card-' + currentSceneIndex);
+            card.style.opacity = '0.3'; card.style.pointerEvents = 'none'; card.style.filter = 'grayscale(100%)';
+            completedCards++;
+            
+            if(completedCards === 5) {
+                alert("準備進入：五角形雷達圖結算畫面！");
+            }
+        }
+    }
+
+    function showVnOptions(opts) {
+        var optCont = document.getElementById('vn-options');
+        optCont.innerHTML = ""; optCont.style.display = "flex";
+        
+        for(var i=0; i<opts.length; i++) {
+            (function(o) {
+                var btn = document.createElement('button'); btn.className = "opt-btn";
+                btn.innerHTML = o.t;
+                btn.onclick = function(e) {
+                    if(e.stopPropagation) e.stopPropagation();
+                    scores[o.type]++;
+                    
+                    var others = [];
+                    for(var j=0; j<opts.length; j++) { if(opts[j].type !== o.type) others.push(opts[j]); }
+                    var truth = others[Math.floor(Math.random() * others.length)];
+                    
+                    currentVnLines.splice(vnIndex + 1, 0, { name: "讀心術：對方的內心話", text: truth.msg, isMind: true });
+                    vnIndex++; playVnLine();
+                };
+                optCont.appendChild(btn);
+            })(opts[i]);
+        }
+    }
+</script>
+</body>
+</html>
