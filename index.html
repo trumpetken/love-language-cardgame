@@ -3,452 +3,845 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>愛之語：記憶的拼圖 (正式美術演示)</title>
+    <title>愛之語：回憶日記 (終極優化版)</title>
     <style>
-        :root { --primary: #ff85a1; --mind: #a29bfe; --gold: #ffd700; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: "Microsoft JhengHei", sans-serif; background: #000; }
+        :root { --primary: #ff85a1; --mind: #a29bfe; --gold: #ffd700; --bg-dark: #0f0c29; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: "Microsoft JhengHei", sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
 
-        .screen { position: absolute; width: 100%; height: 100%; display: none; background-size: cover; background-position: center; box-sizing: border-box; }
-        
-        /* 共同按鈕 - VN 選項 */
-        .opt-btn { background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; text-align: left; margin: 5px 0; -webkit-backdrop-filter: blur(5px); }
+        .screen { position: absolute; width: 100%; height: 100%; display: none; box-sizing: border-box; }
+
+        /* --- 0. 共用按鈕與閃光特效 --- */
+        .opt-btn { background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; text-align: left; margin: 5px 0; transition: 0.2s; backdrop-filter: blur(5px); }
         .opt-btn:hover { background: var(--primary); }
+        #flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 9999; display: none; opacity: 0; transition: opacity 0.5s; pointer-events: none; }
+
+        /* --- 1. 性別選擇 --- */
+        #setup-screen { background: radial-gradient(circle, #302b63, #0f0c29); z-index: 200; flex-direction: column; align-items: center; justify-content: center; }
+
+        /* --- 2. 3D 圓形全景樞紐 (改回暗黑原版) --- */
+        #hub-screen { z-index: 10; background-color: #000; }
+        #scene { width: 100vw; height: 100vh; perspective: 600px; overflow: hidden; position: relative; }
+        #camera { position: absolute; top: 50%; left: 50%; width: 0; height: 0; transform-style: preserve-3d; }
+        #world { position: absolute; top: 0; left: 0; width: 0; height: 0; transform-style: preserve-3d; }
+
+        .wall { 
+            position: absolute; width: 540px; height: 800px; left: -270px; top: -400px; 
+            background: linear-gradient(to bottom, #0f0c29, #24243e 50%, #111); 
+            border: 1px solid rgba(255, 133, 161, 0.1); backface-visibility: hidden; 
+        }
+        .floor, .ceiling { position: absolute; width: 2400px; height: 2400px; left: -1200px; top: -1200px; border-radius: 50%; }
+        .floor { 
+            transform: translateY(400px) rotateX(90deg); 
+            background: radial-gradient(circle, transparent 20%, #050510 80%), 
+                        linear-gradient(rgba(255, 133, 161, 0.15) 2px, transparent 2px), 
+                        linear-gradient(90deg, rgba(255, 133, 161, 0.15) 2px, transparent 2px); 
+            background-size: 100% 100%, 100px 100px, 100px 100px; 
+            background-color: #050510; 
+        }
+        .ceiling { 
+            transform: translateY(-400px) rotateX(-90deg); 
+            background: radial-gradient(circle, #24243e, #0f0c29 80%); 
+            box-shadow: 0 0 100px rgba(255, 133, 161, 0.2) inset; 
+        }
+        .center-glow { 
+            position: absolute; width: 200px; height: 200px; left: -100px; top: -100px; 
+            background: radial-gradient(circle, rgba(255,215,0,0.4), transparent 70%); 
+            transform: translateY(398px) rotateX(90deg); border-radius: 50%; 
+        }
+
+        /* --- 實體門把與影像門板 --- */
+        .door-frame { position: absolute; width: 180px; height: 420px; left: -90px; top: -210px; transform-style: preserve-3d; pointer-events: none; }
+        .door-inside { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #fff; box-shadow: 0 0 60px #fff; opacity: 0; transition: opacity 1s; border-radius: 10px 10px 0 0; }
         
-        /* 0. 性別選擇 - 加入星空背景 */
-        #setup-screen { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            background-color: #0f0c29;
-            /* 正式步驟：換成真實星空圖 */
-            background-image: radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px), radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px);
-            background-size: 550px 550px, 350px 350px;
-            z-index: 10; 
+        .door-flap { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; box-sizing: border-box; 
+            border: 3px solid var(--gold); border-radius: 10px 10px 0 0; 
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3) inset, 0 0 20px rgba(255, 215, 0, 0.5); 
+            transform-origin: left center; transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.2s; 
+            transform-style: preserve-3d; pointer-events: auto; cursor: pointer;
+        }
+        .door-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0, 0, 0, 0.65); border-radius: 6px 6px 0 0; z-index: 0; transition: background 0.3s;
+        }
+        .door-content {
+            position: relative; z-index: 1; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--gold); font-weight: bold; font-size: 1.4rem; text-align: center; text-shadow: 0 0 10px var(--gold);
         }
         
-        /* 1. 星空卡牌大廳 */
-        #card-screen { 
-            background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); 
-            display: none; flex-direction: column; align-items: center; justify-content: center; 
-            z-index: 10; 
+        .door-flap:active .door-overlay { background: rgba(255, 133, 161, 0.4); }
+        .door-flap.completed { opacity: 0.3; filter: grayscale(100%); pointer-events: none; border-color: #555; }
+
+        /* UI 與全向搖桿 */
+        #ui-layer { position: absolute; bottom: 0; width: 100%; height: 100%; pointer-events: none; }
+        #instruction { 
+            position: absolute; top: 30px; width: 100%; text-align: center; 
+            color: white; font-size: 1rem; text-shadow: 0 0 10px var(--primary); 
+            animation: pulse 2s infinite; pointer-events: auto; 
+            background: rgba(0,0,0,0.5); padding: 5px 0;
         }
-        #card-container { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 800px; padding: 20px; }
+        @keyframes pulse { 0% {opacity:0.6;} 50% {opacity:1;} 100% {opacity:0.6;} }
         
-        .card { 
-            width: 120px; height: 180px; border: 3px solid #ffd700; border-radius: 10px;
-            cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
-            transition: transform 0.2s ease-in-out; text-align: center;
-            display: flex; align-items: center; justify-content: center;
-            
-            /* 【正式美術套用】塔羅牌背面 */
-            /* 正式步驟：background-image: url('tarot_back.png'); */
-            background-color: #1a1a2e;
-            color: #ffd700; font-size: 50px; font-family: serif;
-        }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 6px; height: 6px; background: rgba(255,255,255,0.8); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px white; transition: 0.2s; }
+        #joystick-area { position: absolute; bottom: 40px; left: 40px; width: 160px; height: 160px; background: rgba(255,255,255,0.05); border-radius: 50%; z-index: 200; display: flex; align-items: center; justify-content: center; pointer-events: auto; border: 2px solid rgba(255,255,255,0.1); }
+        #joystick-knob { position: absolute; width: 50px; height: 50px; background: rgba(255, 133, 161, 0.8); border-radius: 50%; left: 55px; top: 55px; box-shadow: 0 0 15px var(--primary); pointer-events: none; }
+
+        /* --- 3. VN 回憶對話與懸浮框 --- */
+        #vn-screen { z-index: 100; cursor: pointer; background-color: #000; background-size: cover; background-position: center; transition: background-image 0.5s; }
+        #sprite-container { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 80%; height: 80%; display: flex; justify-content: center; align-items: flex-end; pointer-events: none; }
+        #character-sprite { height: 95%; transition: opacity 0.5s; opacity: 0; max-width: 100%; object-fit: contain; }
         
-        /* 2. 拼圖修復畫面 */
-        #puzzle-screen { display: none; background: rgba(0,0,0,0.95); z-index: 50; touch-action: none; }
-        #puzzle-layout { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; gap: 30px; padding: 20px; box-sizing: border-box; }
-        
-        /* 拼圖底盤 */
-        #puzzle-board { 
-            width: 300px; height: 450px; border-radius: 15px; position: relative; border: 4px solid #fff; box-shadow: 0 0 30px rgba(255,255,255,0.1); 
-            background-size: cover; 
-            filter: grayscale(80%) blur(1px); /* 讓底圖變暗/模糊 */
+        #vn-summary-box {
+            position: absolute; top: 5%; left: 50%; transform: translateX(-50%);
+            width: 85%; max-width: 800px; background: rgba(0, 0, 0, 0.75);
+            border-left: 4px solid var(--primary); border-right: 4px solid var(--primary);
+            border-radius: 8px; padding: 15px 25px; box-sizing: border-box;
+            color: rgba(255, 255, 255, 0.95); font-size: 1.1rem; line-height: 1.6;
+            display: none; z-index: 101; box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px); text-align: center; font-style: italic; white-space: pre-wrap;
         }
-        /* 缺口框格 - 配合凹凸形狀 */
-        .puzzle-hole { 
-            position: absolute; width: 70px; height: 70px; background: rgba(0,0,0,0.6); 
-            border-radius: 10px; 
-            /* 正式步驟：這裡也可以加上一個半透明的凹凸形狀 PNG */
-        }
-
-        #puzzle-inventory { width: 100px; height: 450px; background: rgba(255,255,255,0.05); border-radius: 15px; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; border: 2px solid rgba(255,255,255,0.2); }
-        
-        /* ========================================= */
-        /* 【核心修改】實現真正的「不規則拼圖感」 */
-        /* ========================================= */
-        .puzzle-piece { 
-            width: 70px; height: 70px; /* 這個大小必須包含不規則的凸出部分 */
-            cursor: pointer; position: absolute; z-index: 100; border: none; 
-            user-select: none; -webkit-user-select: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-
-            /* 1. 載入完整的圖作為背景 */
-            background-repeat: no-repeat;
-            background-size: 300px 450px; /* 這裡必須與 puzzle-board 的大小一致 */
-
-            /* 2. 【正式美術套用】套用不規則遮罩 (Jigsaw Shape Mask) */
-            /* 必須加上 -webkit- 前綴讓平板 Safari 支援 */
-            -webkit-mask-size: 100% 100%;
-            -webkit-mask-repeat: no-repeat;
-            mask-size: 100% 100%;
-            mask-repeat: no-repeat;
-        }
-
-        /* Demo: 使用 SVG 代碼模擬不規則遮罩和插畫位置 */
-        /* 碎片 1: 左上凸頭 */
-        #piece-0 {
-            /* 正式步驟：-webkit-mask-image: url('mask0.png'); */
-            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"><path d="M10,10 H60 V60 H10 V35 a8,8 0 0,1 0,-10 Z" fill="black"/></svg>');
-        }
-        /* 碎片 2: 右邊凹頭 */
-        #piece-1 {
-            /* 正式步驟：-webkit-mask-image: url('mask1.png'); */
-            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"><path d="M10,10 H60 V25 a8,8 0 0,0 0,10 V60 H10 V10 Z" fill="black"/></svg>');
-        }
-        /* 碎片 3: 下方凸頭 */
-        #piece-2 {
-            /* 正式步驟：-webkit-mask-image: url('mask2.png'); */
-            -webkit-mask-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 70"><path d="M10,10 H60 V60 H35 a8,8 0 0,1 -10,0 H10 V10 Z" fill="black"/></svg>');
-        }
-
-        .puzzle-piece.locked { 
-            box-shadow: none; border-color: transparent; cursor: default; 
-            filter: drop-shadow(0 0 5px rgba(255,215,0,0.8)); /* 拼對時的發光 */
-        }
-
-        /* 恢復發光特效 */
-        #flash-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #fff; z-index: 9999; display: none; opacity: 0; transition: opacity 0.5s; }
-
-        /* 3. VN 回憶畫面 */
-        #vn-container { 
-            display: none; z-index: 100; cursor: pointer; 
-            background-size: cover; background-position: center;
-        }
-        /* VN 立繪層 */
-        #sprite-container { 
-            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); 
-            width: 80%; height: 80%; display: flex; justify-content: center; align-items: flex-end; 
-            pointer-events: none; 
-        }
-        .char-sprite { height: 95%; transition: opacity 0.5s; opacity: 0; }
 
         #vn-dialog { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 900px; min-height: 160px; background: rgba(0, 0, 0, 0.85); border: 2px solid rgba(255, 255, 255, 0.2); border-radius: 12px; padding: 25px; box-sizing: border-box; color: white; -webkit-backdrop-filter: blur(5px); }
+        #vn-text { font-size: 1.15rem; line-height: 1.6; white-space: pre-wrap; transition: 0.2s; }
         #vn-options { display: none; flex-direction: column; gap: 10px; margin-top: 15px; pointer-events: auto;}
+
+        /* --- 4. 結算雷達圖畫面 --- */
+        #result-screen { 
+            background: radial-gradient(circle, #1a1a3a, #050510); 
+            z-index: 300; display: none; flex-direction: column; align-items: center; justify-content: flex-start; 
+            padding: 30px 20px; box-sizing: border-box; overflow-y: hidden; cursor: pointer;
+        }
+        #chart-box { 
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 15px; padding: 15px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); 
+            backdrop-filter: blur(10px); display:flex; justify-content:center;
+            margin-top: 10px; z-index: 0;
+        }
+        #radarCanvas { max-width: 100%; height: auto; }
+        
+        /* 結算畫面的解說助手排版 */
+        #result-sprite-container { 
+            position: absolute; 
+            bottom: 190px; 
+            right: 10%; 
+            height: 45%; 
+            display: flex; 
+            justify-content: flex-end; 
+            align-items: flex-end; 
+            pointer-events: none; 
+            z-index: 1; 
+        }
+        #result-sprite { height: 100%; max-width: 100%; object-fit: contain; }
+        
+        #result-dialog { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 900px; min-height: 160px; background: rgba(0, 0, 0, 0.85); 
+            border: 2px solid var(--mind); border-radius: 12px; padding: 25px; box-sizing: border-box; 
+            color: white; -webkit-backdrop-filter: blur(5px); z-index: 2; 
+        }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
     <div id="flash-overlay"></div>
 
-    <div id="setup-screen" class="screen">
+    <div id="audio-ui" style="position: fixed; top: 15px; right: 15px; z-index: 9999; display: none; gap: 10px; flex-wrap: wrap; justify-content: flex-end;">
+        <button class="opt-btn" id="btn-skip" onclick="skipOpening(event)" style="padding: 8px 16px; font-size: 0.95rem; margin: 0; min-height: auto; display: none;">&gt;&gt;</button>
+        <button class="opt-btn" id="btn-reset-hub" onclick="resetHubProgress(event)" style="padding: 8px 16px; font-size: 0.95rem; margin: 0; min-height: auto; display: none;">重新選擇</button>
+        <button class="opt-btn" id="btn-restart" onclick="restartGame(event)" style="padding: 8px 16px; font-size: 0.95rem; margin: 0; min-height: auto; display: none;">從頭開始</button>
+        <button class="opt-btn" id="btn-bgm" onclick="toggleBGM(event)" style="padding: 8px 16px; font-size: 0.95rem; margin: 0; min-height: auto;">🎵 BGM: 關</button>
+        <button class="opt-btn" id="btn-sfx" onclick="toggleSFX(event)" style="padding: 8px 16px; font-size: 0.95rem; margin: 0; min-height: auto;">🔊 音效: 開</button>
+    </div>
+
+    <div id="setup-screen" class="screen" style="display: flex;">
         <h1 style="color:white; margin-bottom:50px; font-size: 2.5rem; text-shadow: 0 0 15px var(--primary); font-family: serif;">愛之語：回憶日記</h1>
         <div style="display:flex; gap:20px;">
-            <button class="opt-btn" style="text-align:center; padding: 15px 40px;" onclick="initGame('male')">男主角</button>
-            <button class="opt-btn" style="text-align:center; padding: 15px 40px;" onclick="initGame('female')">女主角</button>
+            <button class="opt-btn" onclick="playSFX(); startGame('male')" style="text-align:center;">男主角</button>
+            <button class="opt-btn" onclick="playSFX(); startGame('female')" style="text-align:center;">女主角</button>
         </div>
     </div>
 
-    <div id="card-screen" class="screen">
-        <div id="spirit-msg" style="color:white; font-size:1.3rem; margin-bottom:30px; text-align:center;">「這五張卡牌封印著你們破碎的記憶...<br>點選一張，將它拼湊完整吧。」</div>
-        <div id="card-container">
-            <div class="card" id="card-0" onclick="flipCard(0)">?</div>
-            <div class="card" id="card-1" onclick="flipCard(1)">?</div>
-            <div class="card" id="card-2" onclick="flipCard(2)">?</div>
-            <div class="card" id="card-3" onclick="flipCard(3)">?</div>
-            <div class="card" id="card-4" onclick="flipCard(4)">?</div>
-        </div>
-    </div>
-
-    <div id="puzzle-screen" class="screen">
-        <h3 style="color:white; text-align:center; padding-top:20px; font-size: 1.3rem; margin:0; text-shadow: 0 0 10px #fff;">拖曳碎片，還原記憶...</h3>
-        <div id="puzzle-layout">
-            <div id="puzzle-board">
-                <div class="puzzle-hole" id="hole-0" style="left: 30px; top: 50px;"></div>
-                <div class="puzzle-hole" id="hole-1" style="left: 180px; top: 180px;"></div>
-                <div class="puzzle-hole" id="hole-2" style="left: 80px; top: 320px;"></div>
+    <div id="hub-screen" class="screen">
+        <div id="scene">
+            <div id="camera">
+                <div id="world">
+                    <script>
+                        for(let i=0; i<12; i++) document.write(`<div class="wall" style="transform: rotateY(${i * 30}deg) translateZ(-1000px);"></div>`);
+                    </script>
+                    <div class="floor"></div><div class="ceiling"></div><div class="center-glow"></div>
+                    <script>
+                        const doorConfigs = [
+                            { id: 0, rot: 0,   title: "回憶 1", sub: "圖書館", bg: "bg_library.png" },
+                            { id: 1, rot: 72,  title: "回憶 2", sub: "練舞室", bg: "bg_dance_studio.png" },
+                            { id: 2, rot: 144, title: "回憶 3", sub: "校園小徑", bg: "bg_campus_path.png" },
+                            { id: 3, rot: 216, title: "回憶 4", sub: "宿舍", bg: "bg_dormitory.png" },
+                            { id: 4, rot: 288, title: "回憶 5", sub: "中央廣場", bg: "bg_plaza.png" }
+                        ];
+                        
+                        doorConfigs.forEach(cfg => {
+                            document.write(`
+                                <div class="door-frame" style="transform: rotateY(${cfg.rot}deg) translateZ(-980px) translateY(190px);">
+                                    <div class="door-inside" id="door-inside-${cfg.id}"></div>
+                                    <div class="door-flap" data-id="${cfg.id}" id="door-flap-${cfg.id}" style="background-image: url('${cfg.bg}'); background-size: cover; background-position: center;">
+                                        <div class="door-overlay"></div>
+                                        <div class="door-content">
+                                            <span>${cfg.title}</span><br><span style="font-size:0.9rem; margin-top:10px;">${cfg.sub}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                        });
+                    </script>
+                </div>
             </div>
-            <div id="puzzle-inventory">
-                <div class="puzzle-piece" id="piece-0" data-target="0"></div>
-                <div class="puzzle-piece" id="piece-1" data-target="1"></div>
-                <div class="puzzle-piece" id="piece-2" data-target="2"></div>
-            </div>
+        </div>
+        <div id="ui-layer">
+            <div id="instruction">平板：滑動螢幕轉向 / 滑鼠點擊拖曳轉向、滾輪縮放 / 鍵盤WASD操控 </div>
+            <div id="crosshair"></div>
+            <div id="joystick-area"><div id="joystick-knob"></div></div>
         </div>
     </div>
 
-    <div id="vn-container" class="screen" onclick="handleVnClick()">
-        <div id="sprite-container">
-            <img id="sprite-spirit" class="char-sprite" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'><rect width='100' height='200' fill='%23ff85a1' opacity='0.5'/><text x='20' y='100' fill='white'>精靈</text></svg>" alt="精靈">
-            <img id="sprite-partner" class="char-sprite" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 200'><rect width='100' height='200' fill='%234a90e2' opacity='0.5'/><text x='20' y='100' fill='white'>前任</text></svg>" alt="前任">
-        </div>
+    <div id="vn-screen" class="screen" onclick="handleVnClick()">
+        <div id="vn-summary-box"></div> 
+        <div id="sprite-container"><img id="character-sprite" src="" alt="立繪"></div>
         <div id="vn-dialog">
-            <div id="vn-name"></div>
+            <div id="vn-name" style="font-size: 1.3rem; font-weight: bold; margin-bottom: 10px;"></div>
             <div id="vn-text"></div>
             <div id="vn-options"></div>
         </div>
     </div>
 
+    <div id="result-screen" class="screen" onclick="nextResultDialog()">
+        <h1 style="color: #fff; font-family: serif; text-shadow: 0 0 15px var(--primary); margin: 0 0 5px 0; font-size: 2rem; position: relative; z-index: 0;">愛之語形狀・結晶</h1>
+        <p style="color: rgba(255,255,255,0.6); margin: 0 0 10px 0; font-size: 1rem; position: relative; z-index: 0;">這是你在這段感情回憶中，靈魂深處最渴望被愛的方式。</p>
+        
+        <div id="chart-box"><canvas id="radarCanvas" width="400" height="360"></canvas></div>
+        
+        <div id="result-sprite-container">
+            <img id="result-sprite" src="spirit.png" alt="日記精靈">
+        </div>
+        
+        <div id="result-dialog">
+            <div style="font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; color: var(--mind);">日記精靈</div>
+            <div id="result-text" style="font-size: 1.15rem; line-height: 1.6; white-space: pre-wrap;"></div>
+            <div id="result-options" style="display: none; flex-direction: column; gap: 10px; margin-top: 15px; pointer-events: auto;">
+                <a href="https://trumpetken.github.io/love-language-game/" target="_blank" class="opt-btn" style="text-align: center; text-decoration: none; font-weight: bold; width: 100%; box-sizing: border-box;" onclick="event.stopPropagation();">接受任務</a>
+            </div>
+        </div>
+    </div>
+
 <script>
-    // --- 遊戲資料 ---
-    var scenes = [
-        { id:0, name: "圖書館的午後", context: "期末考週，對方盯著筆記本發呆，壓力大到快哭出來了。", 
-          /* Demo: 使用 SVG 模擬正式插畫 */fullImg: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='450'><rect width='300' height='450' fill='%23e0f7fa'/><text x='80' y='220' fill='%23006064' font-size='24'>圖書館插畫</text></svg>",
-          opts: [ { t: "買杯熱咖啡 (服務)", type: "acts", msg: "其實我不需要咖啡，我只希望你能陪我散心... (精心的時刻)" }, { t: "寫小紙條鼓勵 (肯定)", type: "words", msg: "如果你能拉著我的手去外面走走也好... (精心的時刻)" }, { t: "提議去走走 (時間)", type: "time", msg: "如果這時候你能對我說一句「你已經很棒了」... (肯定的言詞)" } ] },
-        // ... 其他場景資料 (略，同 07 版) ...
+    // --- 遊戲全局狀態 ---
+    let currentMode = 'SETUP'; 
+    let playerGender = ''; let partnerSprite = ''; 
+    let scores = { words:0, acts:0, gifts:0, time:0, touch:0 };
+    let completedDoors = 0;
+
+    // --- 音效與音樂系統變數 ---
+    let bgmEnabled = false; // 預設關閉BGM
+    let sfxEnabled = true;
+    let currentBgm = null;
+
+    function playSFX() {
+        if (sfxEnabled) {
+            let sfx = new Audio('se_click.wav'); // 修改為wav格式
+            sfx.play().catch(err => console.log("SFX play error:", err));
+        }
+    }
+
+    function toggleBGM(event) {
+        if (event) event.stopPropagation();
+        bgmEnabled = !bgmEnabled;
+        let btn = document.getElementById('btn-bgm');
+        if (bgmEnabled) {
+            btn.innerHTML = "🎵 BGM: 開";
+            if (currentBgm) {
+                currentBgm.play().catch(err => console.log(err));
+            } else {
+                if (currentMode === 'VN' && vnIndex < currentVnLines.length && currentVnLines[vnIndex].bg === "dorm_night.png") {
+                    currentBgm = new Audio('bgm_opening.mp3');
+                    currentBgm.loop = true;
+                    currentBgm.play().catch(err => console.log(err));
+                } else {
+                    currentBgm = new Audio('bgm_hub.mp3');
+                    currentBgm.loop = true;
+                    currentBgm.play().catch(err => console.log(err));
+                }
+            }
+        } else {
+            btn.innerHTML = "🎵 BGM: 關";
+            if (currentBgm) currentBgm.pause();
+        }
+        playSFX();
+    }
+
+    function toggleSFX(event) {
+        if (event) event.stopPropagation();
+        sfxEnabled = !sfxEnabled;
+        let btn = document.getElementById('btn-sfx');
+        if (sfxEnabled) {
+            btn.innerHTML = "🔊 音效: 開";
+        } else {
+            btn.innerHTML = "🔊 音效: 關";
+        }
+        playSFX();
+    }
+
+    // --- 控制鈕功能：跳過劇情 ---
+    function skipOpening(event) {
+        if (event) event.stopPropagation();
+        playSFX();
+        clearInterval(typeTimer);
+        document.getElementById('vn-screen').style.display = 'none';
+        
+        if (currentBgm) currentBgm.pause();
+        if (bgmEnabled) {
+            currentBgm = new Audio('bgm_hub.mp3');
+            currentBgm.loop = true;
+            currentBgm.play().catch(e => console.log(e));
+        }
+
+        document.getElementById('btn-skip').style.display = 'none';
+        document.getElementById('btn-reset-hub').style.display = 'block';
+        document.getElementById('hub-screen').style.display = 'block';
+        currentMode = 'HUB';
+    }
+
+    // --- 控制鈕功能：重新選擇進度 ---
+    function resetHubProgress(event) {
+        if (event) event.stopPropagation();
+        playSFX();
+        scores = { words:0, acts:0, gifts:0, time:0, touch:0 };
+        completedDoors = 0;
+
+        for (let i = 0; i < 5; i++) {
+            let flap = document.getElementById('door-flap-' + i);
+            let inside = document.getElementById('door-inside-' + i);
+            if (flap) flap.classList.remove('open', 'completed');
+            if (flap) flap.style.transform = 'rotateY(0deg)';
+            if (inside) inside.style.opacity = '0';
+        }
+
+        if (currentMode === 'VN' || currentMode === 'TRANSITION') {
+            clearInterval(typeTimer);
+            document.getElementById('vn-screen').style.display = 'none';
+            document.getElementById('vn-summary-box').style.display = 'none';
+            document.getElementById('hub-screen').style.display = 'block';
+        }
+
+        cameraYaw = 0; zoomLevel = 0;
+        document.getElementById('camera').style.transform = `translateZ(0px)`;
+        document.getElementById('world').style.transform = `rotateY(0deg)`;
+        currentMode = 'HUB';
+    }
+
+    // --- 控制鈕功能：從頭開始 ---
+    function restartGame(event) {
+        if (event) event.stopPropagation();
+        playSFX();
+        if (currentBgm) { currentBgm.pause(); currentBgm = null; }
+
+        scores = { words:0, acts:0, gifts:0, time:0, touch:0 };
+        completedDoors = 0;
+        clearInterval(typeTimer);
+        clearInterval(resultTypeTimer);
+
+        for (let i = 0; i < 5; i++) {
+            let flap = document.getElementById('door-flap-' + i);
+            let inside = document.getElementById('door-inside-' + i);
+            if (flap) flap.classList.remove('open', 'completed');
+            if (flap) flap.style.transform = 'rotateY(0deg)';
+            if (inside) inside.style.opacity = '0';
+        }
+
+        cameraYaw = 0; zoomLevel = 0;
+        document.getElementById('camera').style.transform = `translateZ(0px)`;
+        document.getElementById('world').style.transform = `rotateY(0deg)`;
+
+        document.getElementById('hub-screen').style.display = 'none';
+        document.getElementById('vn-screen').style.display = 'none';
+        document.getElementById('vn-summary-box').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('audio-ui').style.display = 'none';
+
+        document.getElementById('setup-screen').style.display = 'flex';
+        currentMode = 'SETUP';
+    }
+
+    const scenes = [
+        { id:0, name: "圖書館", color: "#4a90e2", bg: "bg_library.png", summary: "時間回到了大一上的期末考週，我們一起到圖書館讀書，然而我卻盯著筆記本發呆，壓力大到快哭出來了。", question: "這個時候，對方做些什麼會讓我感到被愛?", opts: [ { t: "買杯熱咖啡給我", type: "acts" }, { t: "寫小紙條鼓勵我", type: "words" }, { t: "陪我去外面走走散心", type: "time" } ] },
+        { id:1, name: "練舞室", color: "#e24a90", bg: "bg_dance_studio.png", summary: "時間回到了我剛結束社團成發，因為表現失誤正在後門自責。他看到了我失落的表情。", question: "這個時候，我希望對方注意到我的狀態...", opts: [ { t: "再給我一個大大的擁抱", type: "touch" }, { t: "並默默陪伴我", type: "time" }, { t: "並說些安慰和鼓勵的話", type: "words" } ] },
+        { id:2, name: "校園小徑", color: "#4ae290", bg: "bg_campus_path.png", summary: "時間回到了我們兩人昨晚吵完架，隔天並肩走在校園小徑，然而兩人還在冷戰沉默不語。", question: "這個時候，我希望對方...", opts: [ { t: "主動開口道歉", type: "words" }, { t: "主動牽起我的手", type: "touch" }, { t: "從我的蝦皮購物車中挑一個我想要買的東西買給我", type: "gifts" } ] },
+        { id:3, name: "宿舍", color: "#e2b84a", bg: "bg_dormitory.png", summary: "時間回到那天是兩人交往百日紀念日。", question: "這個時候，我希望對方...", opts: [ { t: "能花時間陪陪我就好", type: "time" }, { t: "精心準備卡片送給我", type: "gifts" }, { t: "精心安排旅遊帶我出去玩", type: "acts" } ] },
+        { id:4, name: "中央廣場", color: "#904ae2", bg: "bg_plaza.png", summary: "時間回到我努力了許久，圓滿達成了的目標。", question: "這個時候，我希望對方...", opts: [ { t: "送我一個我想要的禮物", type: "gifts" }, { t: "親自準備一頓大餐請我吃", type: "acts" }, { t: "緊緊擁抱轉圈", type: "touch" } ] }
     ];
 
-    // 為了展示美術版，我只複製一個場景作為代表。正式版請補齊其餘 4 個場景。
-    for(var i=1; i<5; i++) { scenes.push(scenes[0]); }
-
-    var scores = { words:0, acts:0, gifts:0, time:0, touch:0 };
-    var completedCards = 0;
-    var currentSceneIndex = 0;
-
-    function initGame(gender) {
+    function startGame(gender) {
+        playerGender = gender;
         document.getElementById('setup-screen').style.display = 'none';
-        document.getElementById('card-screen').style.display = 'flex';
-    }
+        partnerSprite = (playerGender === 'male') ? 'girl.png' : 'boy.png';
 
-    function flipCard(index) {
-        var card = document.getElementById('card-' + index);
-        if (card.getAttribute('data-flipped') === 'true') return;
-        card.setAttribute('data-flipped', 'true');
-        
-        currentSceneIndex = index;
-        var scene = scenes[index];
+        document.getElementById('audio-ui').style.display = 'flex';
+        document.getElementById('btn-skip').style.display = 'block';
+        document.getElementById('btn-reset-hub').style.display = 'none';
+        document.getElementById('btn-restart').style.display = 'block';
 
-        card.style.transform = 'scaleX(0)'; // 2D 翻轉動畫
-        
-        setTimeout(function() {
-            /* 【正式美術套用】塔羅牌正面 (揭示場景縮圖) */
-            // 正式步驟：card.style.backgroundImage = 'url(cards/library_front.png)';
-            card.style.backgroundColor = '#fff'; card.style.border = '3px solid #ffd700'; card.style.color = '#333';
-            card.innerHTML = '<div style="font-size:16px; padding:10px; font-weight:bold;">解鎖記憶<br>▼<br>' + scene.name + '</div>';
-            card.style.transform = 'scaleX(1)'; 
-            
-            setTimeout(function() { openPuzzleScreen(); }, 1200);
-        }, 200);
-    }
-
-    // --- 拼圖系統 (原生 Touch/Mouse 相容版) ---
-    var draggedPiece = null;
-    var startX = 0, startY = 0, startLeft = 0, startTop = 0;
-    var piecesLocked = 0;
-
-    // 遮罩在完整插畫中的相對位置 (美術提供)
-    var holesConfig = [ { x: 30, y: 50 }, { x: 180, y: 180 }, { x: 80, y: 320 } ];
-
-    function openPuzzleScreen() {
-        document.getElementById('card-screen').style.display = 'none';
-        document.getElementById('puzzle-screen').style.display = 'block';
-        
-        var board = document.getElementById('puzzle-board');
-        var fullImgUrl = scenes[currentSceneIndex].fullImg; // 取得該回憶的插畫
-
-        /* 【正式美術套用】底圖 */
-        // 正式步驟：board.style.backgroundImage = "url('library_board_bg.png')";
-        board.style.backgroundImage = "url(" + fullImgUrl + ")"; 
-        
-        piecesLocked = 0;
-        
-        // 重置拼圖碎片並套用背景
-        for(var i=0; i<3; i++) {
-            var piece = document.getElementById('piece-' + i);
-            document.getElementById('puzzle-inventory').appendChild(piece);
-            piece.style.position = 'relative';
-            piece.style.left = '0px'; piece.style.top = '0px';
-            piece.className = 'puzzle-piece'; 
-
-            /* 【正式美術套用】拼圖碎片載入完整的圖 */
-            piece.style.backgroundImage = "url(" + fullImgUrl + ")"; 
-            
-            // 關鍵：將背景移動到對應位置 (Background Position)，呈現遮罩切割感
-            var cfg = holesConfig[i];
-            piece.style.backgroundPosition = "-" + cfg.x + "px -" + cfg.y + "px";
+        if (bgmEnabled) {
+            currentBgm = new Audio('bgm_opening.mp3');
+            currentBgm.loop = true;
+            currentBgm.play().catch(e => console.log("BGM 播放受限:", e));
         }
-    }
 
-    // --- 觸控/滑鼠拖曳邏輯 ---
-    window.onload = function() {
-        for(var i=0; i<3; i++) {
-            var piece = document.getElementById('piece-' + i);
-            // 兼容性處理：確保同時綁定鼠標和觸摸
-            piece.addEventListener('touchstart', onDragStart, false);
-            piece.addEventListener('mousedown', onDragStart, false);
-        }
-        document.addEventListener('touchmove', onDragMove, {passive: false}); // 關鍵：{passive:false} 才能 preventDefault
-        document.addEventListener('mousemove', onDragMove, false);
-        document.addEventListener('touchend', onDragEnd, false);
-        document.addEventListener('mouseup', onDragEnd, false);
-    };
-
-    function onDragStart(e) {
-        if(e.target.className.indexOf('locked') !== -1) return;
-        draggedPiece = e.target;
-        
-        // 將被拖拽物體暫時置入 body，確保層級最高
-        var rect = draggedPiece.getBoundingClientRect();
-        draggedPiece.style.position = 'fixed';
-        draggedPiece.style.left = rect.left + 'px';
-        draggedPiece.style.top = rect.top + 'px';
-        document.body.appendChild(draggedPiece);
-
-        startX = e.type.indexOf('touch') !== -1 ? e.touches[0].clientX : e.clientX;
-        startY = e.type.indexOf('touch') !== -1 ? e.touches[0].clientY : e.clientY;
-        startLeft = parseFloat(draggedPiece.style.left) || 0;
-        startTop = parseFloat(draggedPiece.style.top) || 0;
-    }
-
-    function onDragMove(e) {
-        if(!draggedPiece) return;
-        
-        // 防止平板跟著捲動 (必須設定 {passive: false} )
-        if(e.cancelable && e.type.indexOf('touch') !== -1) e.preventDefault(); 
-        
-        var currentX = e.type.indexOf('touch') !== -1 ? e.touches[0].clientX : e.clientX;
-        var currentY = e.type.indexOf('touch') !== -1 ? e.touches[0].clientY : e.clientY;
-        
-        draggedPiece.style.left = (startLeft + currentX - startX) + 'px';
-        draggedPiece.style.top = (startTop + currentY - startY) + 'px';
-    }
-
-    function onDragEnd(e) {
-        if(!draggedPiece) return;
-        
-        var targetId = draggedPiece.getAttribute('data-target');
-        var hole = document.getElementById('hole-' + targetId);
-        var holeRect = hole.getBoundingClientRect();
-        var pieceRect = draggedPiece.getBoundingClientRect();
-        
-        // 計算距離
-        var dx = holeRect.left - pieceRect.left;
-        var dy = holeRect.top - pieceRect.top;
-        var dist = Math.sqrt(dx*dx + dy*dy);
-        
-        // 放寬吸附判定到 70px (拼圖不規則形狀需要更多容錯)
-        if (dist < 70) {
-            draggedPiece.style.left = holeRect.left + 'px';
-            draggedPiece.style.top = holeRect.top + 'px';
-            // 將 fixed 轉回 absolute，鎖定在 board 上
-            var boardRect = document.getElementById('puzzle-board').getBoundingClientRect();
-            var cfg = holesConfig[targetId];
-            draggedPiece.style.position = 'absolute';
-            draggedPiece.style.left = cfg.x + 'px';
-            draggedPiece.style.top = cfg.y + 'px';
-            document.getElementById('puzzle-board').appendChild(draggedPiece);
-
-            draggedPiece.className = 'puzzle-piece locked';
-            piecesLocked++;
-            if(piecesLocked === 3) setTimeout(completePuzzle, 500);
-        } else {
-            // 放錯位置，退回右邊庫存區
-            document.getElementById('puzzle-inventory').appendChild(draggedPiece);
-            draggedPiece.style.position = 'relative';
-            draggedPiece.style.left = '0px';
-            draggedPiece.style.top = '0px';
-        }
-        draggedPiece = null;
-    }
-
-    function completePuzzle() {
-        var flash = document.getElementById('flash-overlay');
-        flash.style.display = 'block';
-        setTimeout(function() { flash.style.opacity = '1'; }, 10);
-        
-        setTimeout(function() {
-            document.getElementById('puzzle-screen').style.display = 'none';
-            // 收回碎片方便下次使用 (CSS 會重置位置)
-            for(var i=0; i<3; i++) {
-                var piece = document.getElementById('piece-'+i);
-                document.getElementById('puzzle-inventory').appendChild(piece);
+        startVnSequence([
+            { name: "我", text: "唉...明明我已經這麼努力付出了，最後他還是選擇跟我分手...", bg: "dorm_night.png", sprite: "" },
+            { name: "我", text: "我到底做錯了什麼...", bg: "dorm_night.png", sprite: "" },
+            { name: "日記本", text: "（桌上的日記本突然發出微弱的光芒...）", bg: "dorm_night.png", sprite: "" },
+            { name: "???", text: "哎呀呀，這股心碎的味道真是讓人鼻酸。讓我來幫助你吧~", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "我", text: "咦?你是誰?", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "???", text: "你好啊，回憶錄的主人。我是你每天認真寫日記而誕生的日記精靈。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "我", text: "這...日記精靈?哈哈哈...我肯定在做夢。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "日記精靈", text: "很難想像嗎?就想像成你的個人Gemini就好啦。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "我", text: "好啊，精靈，那你知道為什麼他要跟我分手嗎?", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "日記精靈", text: "根據你的日記內容，我發現你和他的「愛之語」不同，所以才會經常吵架。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "我", text: "什麼是「愛之語」?", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "日記精靈", text: "每個人喜歡被愛人對待的方式都不同，就像說著不同語言一樣。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "日記精靈", text: "若能了解彼此的「愛之語」，用對方喜歡的愛之語來對待他，就能增進兩人的關係唷。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "日記精靈", text: "我們先來了解你的愛之語吧。這裡是你的「記憶樞紐」。", bg: "dorm_night.png", sprite: "spirit.png" },
+            { name: "日記精靈", text: "去推開周圍的發光門把，重新體驗那些回憶吧。", bg: "dorm_night.png", sprite: "spirit.png", isLast: true, highlight: true }
+        ], () => {
+            if (currentBgm) currentBgm.pause();
+            if (bgmEnabled) {
+                currentBgm = new Audio('bgm_hub.mp3');
+                currentBgm.loop = true;
+                currentBgm.play().catch(e => console.log("BGM 播放受限:", e));
             }
-            flash.style.opacity = '0';
-            setTimeout(function() { flash.style.display = 'none'; }, 500);
-            
-            startVnSequence();
-        }, 600);
+
+            document.getElementById('btn-skip').style.display = 'none';
+            document.getElementById('btn-reset-hub').style.display = 'block';
+
+            document.getElementById('hub-screen').style.display = 'block';
+            currentMode = 'HUB';
+        });
     }
 
-    // --- 視覺小說 (VN) ---
-    var currentVnLines = [];
-    var vnIndex = 0;
-    var isTyping = false;
-    var typeTimer = null;
+    // --- 全景縮放與智慧防誤觸點擊系統 ---
+    let cameraYaw = 0; let zoomLevel = 0; 
+    let joyTouchId = null, lookTouchId = null; 
+    let joyMoveY = 0; let lastLookX = 0;
+    let clickStartX = 0, clickStartY = 0; let potentialDoorClick = null;
 
-    function startVnSequence() {
-        document.getElementById('vn-container').style.display = 'block';
-        
-        /* 【正式美術套用】VN 背景 */
-        // 正式步驟：document.getElementById('vn-container').style.backgroundImage = 'url(bg/library.png)';
-        
-        var scene = scenes[currentSceneIndex];
-        currentVnLines = [{ name: "回憶：" + scene.name, text: scene.context, options: scene.opts, showSpirit: true }]; // 精靈開場
-        vnIndex = 0;
+    function handleJoy(clientX, centerY) {
+        const rect = document.getElementById('joystick-area').getBoundingClientRect();
+        const dx = clientX - (rect.left + rect.width / 2); const dy = centerY - (rect.top + rect.height / 2);
+        const dist = Math.min(40, Math.hypot(dx, dy)); const ang = Math.atan2(dy, dx);
+        const knobX = Math.cos(ang) * dist; const knobY = Math.sin(ang) * dist;
+        document.getElementById('joystick-knob').style.transform = `translate(${knobX}px, ${knobY}px)`;
+        joyMoveY = (knobY / 40) * 15; 
+    }
+
+    window.addEventListener('touchstart', (e) => {
+        if (currentMode !== 'HUB') return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            let t = e.changedTouches[i];
+            if (t.target.closest('#joystick-area')) { 
+                if (joyTouchId === null) { joyTouchId = t.identifier; handleJoy(t.clientX, t.clientY); } 
+            } else { 
+                if (lookTouchId === null) { 
+                    lookTouchId = t.identifier; lastLookX = t.clientX; 
+                    let flap = t.target.closest('.door-flap');
+                    if (flap && !flap.classList.contains('completed')) {
+                        potentialDoorClick = flap.getAttribute('data-id');
+                        clickStartX = t.clientX; clickStartY = t.clientY;
+                    } else { potentialDoorClick = null; }
+                } 
+            }
+        }
+    }, {passive: false});
+
+    window.addEventListener('touchmove', (e) => {
+        if (currentMode !== 'HUB') return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            let t = e.changedTouches[i];
+            if (t.identifier === joyTouchId) { e.preventDefault(); handleJoy(t.clientX, t.clientY); } 
+            else if (t.identifier === lookTouchId) { e.preventDefault(); cameraYaw += (t.clientX - lastLookX) * 0.2; lastLookX = t.clientX; }
+        }
+    }, {passive: false});
+
+    const endTouch = (e) => {
+        // 移除模式阻擋，確保手指離開時狀態被徹底清空，防止搖桿卡死
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            let t = e.changedTouches[i];
+            if (t.identifier === joyTouchId) { 
+                joyTouchId = null; joyMoveY = 0; document.getElementById('joystick-knob').style.transform = 'translate(0,0)'; 
+            }
+            if (t.identifier === lookTouchId) { 
+                if (potentialDoorClick !== null && currentMode === 'HUB') {
+                    let dist = Math.hypot(t.clientX - clickStartX, t.clientY - clickStartY);
+                    if (dist < 10) openDoor(parseInt(potentialDoorClick));
+                }
+                potentialDoorClick = null;
+                lookTouchId = null; 
+            }
+        }
+    };
+    window.addEventListener('touchend', endTouch); window.addEventListener('touchcancel', endTouch);
+
+    let isKeyW = false, isKeyS = false; let isKeyA = false, isKeyD = false; 
+    window.addEventListener('keydown', (e) => { 
+        if(currentMode !== 'HUB') return; 
+        let k = e.key.toLowerCase(); 
+        if (k==='w'||e.key==='ArrowUp') isKeyW = true; 
+        if (k==='s'||e.key==='ArrowDown') isKeyS = true; 
+        if (k==='a'||e.key==='ArrowLeft') isKeyA = true; 
+        if (k==='d'||e.key==='ArrowRight') isKeyD = true;
+    });
+    window.addEventListener('keyup', (e) => { 
+        // 移除模式阻擋，確保按鍵放開時變數正確歸零
+        let k = e.key.toLowerCase(); 
+        if (k==='w'||e.key==='ArrowUp') isKeyW = false; 
+        if (k==='s'||e.key==='ArrowDown') isKeyS = false; 
+        if (k==='a'||e.key==='ArrowLeft') isKeyA = false; 
+        if (k==='d'||e.key==='ArrowRight') isKeyD = false;
+    });
+
+    let isMouseDown = false;
+    window.addEventListener('mousedown', (e) => {
+        if (currentMode === 'HUB' && !e.target.closest('#joystick-area')) {
+            isMouseDown = true; lastLookX = e.clientX;
+            let flap = e.target.closest('.door-flap');
+            if (flap && !flap.classList.contains('completed')) {
+                potentialDoorClick = flap.getAttribute('data-id');
+                clickStartX = e.clientX; clickStartY = e.clientY;
+            } else { potentialDoorClick = null; }
+        }
+    });
+    window.addEventListener('mousemove', (e) => { if (currentMode === 'HUB' && isMouseDown) { cameraYaw += (e.clientX - lastLookX) * 0.2; lastLookX = e.clientX; } });
+    window.addEventListener('mouseup', (e) => { 
+        isMouseDown = false; 
+        if (potentialDoorClick !== null && currentMode === 'HUB') {
+            let dist = Math.hypot(e.clientX - clickStartX, e.clientY - clickStartY);
+            if (dist < 10) openDoor(parseInt(potentialDoorClick));
+        }
+        potentialDoorClick = null;
+    });
+    window.addEventListener('mouseleave', () => { isMouseDown = false; potentialDoorClick = null; });
+
+    window.addEventListener('wheel', (e) => {
+        if (currentMode === 'HUB') {
+            if (e.deltaY < 0) { zoomLevel += 30; } else { zoomLevel -= 30; }
+            zoomLevel = Math.max(0, Math.min(750, zoomLevel));
+            document.getElementById('camera').style.transform = `translateZ(${zoomLevel}px)`;
+        }
+    });
+
+    // --- 遊戲背景核心引擎 (全域獨立，確保不會卡死) ---
+    function gameLoop() {
+        requestAnimationFrame(gameLoop); // 永久運行
+        if (currentMode === 'HUB') {
+            if (isKeyA) cameraYaw += 2; if (isKeyD) cameraYaw -= 2;
+            if (isKeyW) zoomLevel += 15; if (isKeyS) zoomLevel -= 15;
+            if (joyMoveY !== 0) zoomLevel -= joyMoveY;
+            zoomLevel = Math.max(0, Math.min(750, zoomLevel));
+
+            document.getElementById('camera').style.transform = `translateZ(${zoomLevel}px)`;
+            document.getElementById('world').style.transform = `rotateY(${-cameraYaw}deg)`;
+        }
+    }
+    requestAnimationFrame(gameLoop); // 開啟全域遊戲迴圈
+
+    function openDoor(index) {
+        let flap = document.getElementById('door-flap-' + index);
+        let inside = document.getElementById('door-inside-' + index);
+        if (flap.classList.contains('open') || flap.classList.contains('completed')) return;
+
+        playSFX();
+
+        currentMode = 'TRANSITION'; currentSceneIndex = index;
+        flap.classList.add('open'); flap.style.transform = 'rotateY(100deg)'; inside.style.opacity = '1';
+
+        setTimeout(() => {
+            let flash = document.getElementById('flash-overlay');
+            flash.style.display = 'block'; setTimeout(() => flash.style.opacity = '1', 10);
+            
+            setTimeout(() => {
+                document.getElementById('hub-screen').style.display = 'none';
+                flash.style.opacity = '0'; setTimeout(() => flash.style.display = 'none', 500);
+
+                let scene = scenes[index];
+                startVnSequence([
+                    { name: "回憶：" + scene.name, text: scene.summary, color: scene.color, bg: scene.bg, sprite: "" },
+                    { name: "回憶：" + scene.name, text: scene.question, options: scene.opts, color: scene.color, bg: scene.bg, sprite: partnerSprite, showSummaryBox: scene.summary }
+                ], () => {
+                    document.getElementById('hub-screen').style.display = 'block';
+                    currentMode = 'HUB';
+                    flap.style.transform = 'rotateY(0deg)'; inside.style.opacity = '0';
+                    flap.classList.add('completed');
+                    
+                    completedDoors++;
+                    if(completedDoors === 5) {
+                        currentMode = 'END';
+                        let finalFlash = document.getElementById('flash-overlay');
+                        finalFlash.style.display = 'block'; finalFlash.style.opacity = '1';
+                        setTimeout(() => {
+                            document.getElementById('hub-screen').style.display = 'none';
+                            showResultChart(); 
+                            finalFlash.style.opacity = '0'; setTimeout(() => finalFlash.style.display = 'none', 500);
+                        }, 600);
+                    }
+                });
+            }, 500);
+        }, 1200);
+    }
+
+    let currentVnLines = [], vnIndex = 0, isTyping = false, typeTimer = null, onVnComplete = null;
+
+    function startVnSequence(lines, callback) {
+        currentMode = 'VN';
+        document.getElementById('vn-screen').style.display = 'block';
+        currentVnLines = lines; vnIndex = 0; onVnComplete = callback;
+        document.getElementById('vn-summary-box').style.display = 'none';
         playVnLine();
     }
 
     function playVnLine() {
-        var line = currentVnLines[vnIndex];
-        var textEl = document.getElementById('vn-text');
-        var optCont = document.getElementById('vn-options');
-
-        optCont.style.display = "none";
-        document.getElementById('vn-name').innerHTML = line.name;
-        textEl.innerHTML = "";
+        let line = currentVnLines[vnIndex];
+        let textEl = document.getElementById('vn-text'), nameEl = document.getElementById('vn-name');
+        let vnContainer = document.getElementById('vn-screen'), spriteEl = document.getElementById('character-sprite');
+        let summaryBox = document.getElementById('vn-summary-box');
         
-        /* 【正式美術套用】立繪切換 */
-        var spriteSpirit = document.getElementById('sprite-spirit');
-        var spritePartner = document.getElementById('sprite-partner');
-        if(line.showSpirit) {
-            spriteSpirit.style.opacity = '1'; spritePartner.style.opacity = '0';
+        document.getElementById('vn-options').style.display = "none";
+        nameEl.innerHTML = line.name; textEl.innerHTML = "";
+        
+        let finalReportText = line.text;
+        if (playerGender === 'male') finalReportText = finalReportText.replace(/他/g, '她');
+
+        if (line.showSummaryBox) {
+            let boxText = line.showSummaryBox;
+            if (playerGender === 'male') boxText = boxText.replace(/他/g, '她');
+            summaryBox.innerHTML = boxText;
+            summaryBox.style.display = 'block';
         } else {
-            // 讀心術時也顯示前任
-            spriteSpirit.style.opacity = '0'; spritePartner.style.opacity = '1';
+            summaryBox.style.display = 'none';
         }
 
-        isTyping = true;
-        var charIndex = 0;
-        clearInterval(typeTimer);
-        typeTimer = setInterval(function() {
-            textEl.innerHTML += line.text.charAt(charIndex); charIndex++;
-            if (charIndex >= line.text.length) {
-                clearInterval(typeTimer); isTyping = false;
-                if (line.options) showVnOptions(line.options);
+        if (line.highlight) { textEl.style.color = "var(--gold)"; textEl.style.fontWeight = "bold"; } 
+        else { textEl.style.color = "white"; textEl.style.fontWeight = "normal"; }
+
+        if (line.bg) { vnContainer.style.backgroundImage = `url('${line.bg}')`; vnContainer.style.backgroundColor = "transparent"; } 
+        else { vnContainer.style.backgroundImage = "none"; vnContainer.style.backgroundColor = line.isMind ? 'rgba(0,0,0,0.9)' : (line.color || '#222'); }
+
+        if (line.sprite) { spriteEl.src = line.sprite; spriteEl.style.opacity = '1'; } 
+        else { spriteEl.style.opacity = '0'; }
+
+        nameEl.style.color = line.isMind ? '#a29bfe' : (line.color || '#ff85a1');
+        document.getElementById('vn-dialog').style.borderColor = line.isMind ? '#a29bfe' : 'rgba(255,255,255,0.2)';
+
+        isTyping = true; let charIndex = 0; clearInterval(typeTimer);
+        typeTimer = setInterval(() => {
+            textEl.innerHTML += finalReportText.charAt(charIndex); charIndex++;
+            if (charIndex >= finalReportText.length) { 
+                clearInterval(typeTimer); isTyping = false; 
+                if (line.options) showVnOptions(line.options); 
             }
         }, 40);
     }
 
     function handleVnClick() {
-        if (isTyping || currentVnLines[vnIndex].options) return;
+        if (currentMode !== 'VN') return;
+        playSFX();
+        if (isTyping) { 
+            clearInterval(typeTimer); 
+            let fullTxt = currentVnLines[vnIndex].text;
+            // 已修復筆誤
+            if (playerGender === 'male') fullTxt = fullTxt.replace(/他/g, '她');
+            document.getElementById('vn-text').innerHTML = fullTxt; 
+            isTyping = false; 
+            if (currentVnLines[vnIndex].options) showVnOptions(currentVnLines[vnIndex].options); 
+            return; 
+        }
+        if (currentVnLines[vnIndex].options) return;
 
         vnIndex++;
-        if (vnIndex < currentVnLines.length) {
-            playVnLine();
-        } else {
-            // VN 結束
-            document.getElementById('vn-container').style.display = 'none';
-            document.getElementById('card-screen').style.display = 'flex';
-            
-            var card = document.getElementById('card-' + currentSceneIndex);
-            card.style.opacity = '0.3'; card.style.pointerEvents = 'none'; card.style.filter = 'grayscale(100%)';
-            completedCards++;
-            
-            if(completedCards === 5) {
-                alert("準備進入：五角形雷達圖結算畫面！");
-            }
+        if (vnIndex < currentVnLines.length) playVnLine();
+        else { 
+            document.getElementById('vn-screen').style.display = 'none'; 
+            document.getElementById('vn-summary-box').style.display = 'none';
+            if(onVnComplete) onVnComplete(); 
         }
     }
 
+    let selectedOption = null;
     function showVnOptions(opts) {
-        var optCont = document.getElementById('vn-options');
+        let optCont = document.getElementById('vn-options');
         optCont.innerHTML = ""; optCont.style.display = "flex";
+        selectedOption = null;
+
+        let buttons = [];
+        opts.forEach(o => {
+            let btn = document.createElement('button'); btn.className = "opt-btn"; 
+            let optionLabel = o.t;
+            if (playerGender === 'male') optionLabel = optionLabel.replace(/他/g, '她');
+            btn.innerHTML = optionLabel;
+            
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                playSFX();
+                
+                buttons.forEach(b => {
+                    b.style.background = "rgba(0,0,0,0.7)";
+                    b.style.borderColor = "rgba(255,255,255,0.3)";
+                });
+                
+                btn.style.background = "var(--primary)";
+                btn.style.borderColor = "var(--gold)";
+                
+                selectedOption = o;
+                confirmBtn.style.display = "block";
+            };
+            optCont.appendChild(btn);
+            buttons.push(btn);
+        });
+
+        let confirmBtn = document.createElement('button');
+        confirmBtn.className = "opt-btn";
+        confirmBtn.innerHTML = "確定選擇";
+        confirmBtn.style.background = "rgba(255,215,0,0.2)";
+        confirmBtn.style.borderColor = "var(--gold)";
+        confirmBtn.style.color = "var(--gold)";
+        confirmBtn.style.fontWeight = "bold";
+        confirmBtn.style.textAlign = "center";
+        confirmBtn.style.marginTop = "15px";
+        confirmBtn.style.display = "none"; 
         
-        for(var i=0; i<opts.length; i++) {
-            (function(o) {
-                var btn = document.createElement('button'); btn.className = "opt-btn";
-                btn.innerHTML = o.t;
-                btn.onclick = function(e) {
-                    if(e.stopPropagation) e.stopPropagation();
-                    scores[o.type]++;
-                    
-                    var others = [];
-                    for(var j=0; j<opts.length; j++) { if(opts[j].type !== o.type) others.push(opts[j]); }
-                    var truth = others[Math.floor(Math.random() * others.length)];
-                    
-                    currentVnLines.splice(vnIndex + 1, 0, { name: "讀心術：對方的內心話", text: truth.msg, isMind: true });
-                    vnIndex++; playVnLine();
-                };
-                optCont.appendChild(btn);
-            })(opts[i]);
+        confirmBtn.onclick = (e) => {
+            e.stopPropagation();
+            playSFX();
+            if (selectedOption) {
+                scores[selectedOption.type]++; 
+                document.getElementById('vn-screen').style.display = 'none'; 
+                document.getElementById('vn-summary-box').style.display = 'none';
+                if(onVnComplete) onVnComplete();
+            }
+        };
+        optCont.appendChild(confirmBtn);
+    }
+
+    // --- 5. 結算雷達圖系統 ---
+    let resultLines = [];
+    let currentResultIndex = 0;
+    let isResultTyping = false;
+    let resultTypeTimer = null;
+
+    function showResultChart() {
+        document.getElementById('result-screen').style.display = 'flex';
+        // 結算隱藏重新選擇，只留從頭開始
+        document.getElementById('btn-reset-hub').style.display = 'none';
+        
+        const canvas = document.getElementById('radarCanvas');
+        const ctx = canvas.getContext('2d');
+        const keys = ['words', 'acts', 'gifts', 'time', 'touch'];
+        const chLabels = ['肯定的言詞', '服務的行動', '真誠的禮物', '精心的時刻', '身體的接觸'];
+        const centerX = 200, centerY = 180, maxRadius = 100, totalSides = 5;
+
+        ctx.clearRect(0,0,400,360);
+        for (let level = 1; level <= 3; level++) {
+            ctx.beginPath(); let r = (maxRadius / 3) * level;
+            for (let i = 0; i < totalSides; i++) {
+                let angle = i * (2 * Math.PI / totalSides) - Math.PI / 2;
+                let x = centerX + r * Math.cos(angle); let y = centerY + r * Math.sin(angle);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath(); ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = "10px sans-serif";
+            ctx.fillText(level, centerX + 4, centerY - (maxRadius / 3) * level + 10);
+        }
+
+        ctx.beginPath();
+        for (let i = 0; i < totalSides; i++) {
+            let angle = i * (2 * Math.PI / totalSides) - Math.PI / 2;
+            ctx.moveTo(centerX, centerY); ctx.lineTo(centerX + maxRadius * Math.cos(angle), centerY + maxRadius * Math.sin(angle));
+        }
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.1)"; ctx.stroke();
+
+        ctx.beginPath();
+        for (let i = 0; i < totalSides; i++) {
+            let score = scores[keys[i]] || 0; let r = (maxRadius / 3) * score; 
+            let angle = i * (2 * Math.PI / totalSides) - Math.PI / 2;
+            let x = centerX + r * Math.cos(angle); let y = centerY + r * Math.sin(angle);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = "rgba(255, 133, 161, 0.5)"; ctx.fill();
+        ctx.strokeStyle = "rgba(255, 133, 161, 0.9)"; ctx.lineWidth = 3;
+        ctx.shadowColor = "rgba(255, 133, 161, 0.5)"; ctx.shadowBlur = 10; ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = "#ffffff"; ctx.font = "bold 13px Microsoft JhengHei, sans-serif"; ctx.textAlign = "center";
+        for (let i = 0; i < totalSides; i++) {
+            let angle = i * (2 * Math.PI / totalSides) - Math.PI / 2;
+            let x = centerX + (maxRadius + 25) * Math.cos(angle); let y = centerY + (maxRadius + 18) * Math.sin(angle);
+            if (Math.cos(angle) > 0.1) ctx.textAlign = "left"; else if (Math.cos(angle) < -0.1) ctx.textAlign = "right"; else ctx.textAlign = "center";
+            ctx.fillText(chLabels[i], x, y + 4);
+        }
+
+        let maxScore = -1; let highestLang = '';
+        keys.forEach((k, idx) => { if (scores[k] > maxScore) { maxScore = scores[k]; highestLang = chLabels[idx]; } });
+        
+        const explanations = {
+            '肯定的言詞': "對你而言，言語具有極高的精神重量。一句真誠的誇獎、道歉或『你已經很棒了』，能瞬間填滿你的安全感。",
+            '服務的行動': "你深信『做的比說的重要』。你渴望從對方實質的體貼與分擔中，確認自己是被深愛與照顧著的。",
+            '真誠的禮物': "禮物對你來說不是物質利益，而是『被牽掛的視覺證明』。不論是精心準備的卡片、還是從蝦皮購物車裡挑選的小驚喜，代表著對方在不見面時，心裡依然惦記著你。",
+            '精心的時刻': "你最渴望的是『全然的陪伴』。默默的並肩、專注的聊天或一起出外散心。你無法忍受心不在焉的敷衍，只有雙方眼神交會、時間專屬於彼此的當下，你才能感受到愛的流動。",
+            '身體的接觸': "對你來說，肢體的溫度勝過千言萬語。一個緊緊的擁抱、冷戰時主動牽起的手、或是開心的旋轉，這種真實的觸覺接觸，是你確認兩人靈魂依然緊密相連的核心途徑。"
+        };
+
+        resultLines = [
+            `你在這段感情的回憶拼圖中，顯現出對【${highestLang}】的強烈渴望。`,
+            explanations[highestLang],
+            `除了了解自己的愛之語，你還要學會辨識別人的愛之語唷！接下來你的任務，如果你選擇接受的話，請找到你身邊的夥伴，猜對他的愛之語吧。`
+        ];
+        
+        currentResultIndex = 0;
+        playResultLine();
+    }
+
+    function playResultLine() {
+        let line = resultLines[currentResultIndex];
+        let textEl = document.getElementById('result-text');
+        document.getElementById('result-options').style.display = "none";
+
+        isResultTyping = true; let charIndex = 0; clearInterval(resultTypeTimer);
+        textEl.innerHTML = ""; 
+        
+        resultTypeTimer = setInterval(() => {
+            textEl.innerHTML += line.charAt(charIndex); charIndex++;
+            if (charIndex >= line.length) { 
+                clearInterval(resultTypeTimer); isResultTyping = false; 
+                if (currentResultIndex === resultLines.length - 1) {
+                    document.getElementById('result-options').style.display = "flex";
+                }
+            }
+        }, 40);
+    }
+
+    function nextResultDialog() {
+        if (currentMode !== 'END') return;
+        playSFX();
+        if (isResultTyping) { 
+            clearInterval(resultTypeTimer); 
+            document.getElementById('result-text').innerHTML = resultLines[currentResultIndex]; 
+            isResultTyping = false; 
+            if (currentResultIndex === resultLines.length - 1) {
+                document.getElementById('result-options').style.display = "flex";
+            }
+            return; 
+        }
+        
+        if (currentResultIndex < resultLines.length - 1) {
+            currentResultIndex++;
+            playResultLine();
         }
     }
 </script>
